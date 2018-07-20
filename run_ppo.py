@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+import os
 import argparse
 import gym
 import numpy as np
@@ -17,9 +17,16 @@ def argparser():
 
 
 def main(args):
+    # prepare directory
+    if not os.path.exists(args.logdir):
+        os.makedirs(args.logdir)
+    if not os.path.exists(args.savedir):
+        os.makedirs(args.savedir)
+    # create environment
     env = gym.make('CartPole-v0')
     env.seed(0)
     ob_space = env.observation_space
+    # build policy network
     Policy = Policy_net('policy', env)
     Old_Policy = Policy_net('old_policy', env)
     PPO = PPOTrain(Policy, Old_Policy, gamma=args.gamma)
@@ -38,9 +45,11 @@ def main(args):
             v_preds = []
             rewards = []
             episode_length = 0
-            while True:  # run policy RUN_POLICY_STEPS which is much less than episode length
+            # run policy RUN_POLICY_STEPS which is much less than episode length
+            while True:
                 episode_length += 1
-                obs = np.stack([obs]).astype(dtype=np.float32)  # prepare to feed placeholder Policy.obs
+                # prepare to feed placeholder Policy.obs
+                obs = np.stack([obs]).astype(dtype=np.float32)
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
 
                 act = np.asscalar(act)
@@ -54,17 +63,22 @@ def main(args):
                 next_obs, reward, done, info = env.step(act)
 
                 if done:
-                    v_preds_next = v_preds[1:] + [0]  # next state of terminate state has 0 state value
+                    # next state of terminate state has 0 state value
+                    v_preds_next = v_preds[1:] + [0]
                     obs = env.reset()
                     reward = -1
                     break
                 else:
                     obs = next_obs
 
-            writer.add_summary(tf.Summary(value=[tf.Summary.Value(tag='episode_length', simple_value=episode_length)])
-                               , iteration)
-            writer.add_summary(tf.Summary(value=[tf.Summary.Value(tag='episode_reward', simple_value=sum(rewards))])
-                               , iteration)
+            writer.add_summary(
+                    tf.Summary(
+                        value=[tf.Summary.Value(tag='episode_length', simple_value=episode_length)]),
+                    iteration)
+            writer.add_summary(
+                    tf.Summary(
+                        value=[tf.Summary.Value(tag='episode_reward', simple_value=sum(rewards))]),
+                    iteration)
 
             if sum(rewards) >= 195:
                 success_num += 1
@@ -93,7 +107,8 @@ def main(args):
             for epoch in range(6):
                 # sample indices from [low, high)
                 sample_indices = np.random.randint(low=0, high=observations.shape[0], size=32)
-                sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]  # sample training data
+                # sample training data
+                sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]
                 PPO.train(obs=sampled_inp[0],
                           actions=sampled_inp[1],
                           gaes=sampled_inp[2],
