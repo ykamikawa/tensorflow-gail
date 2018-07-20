@@ -23,7 +23,7 @@ def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', help='filename of model to test', default='trained_models/ppo/model.ckpt')
     parser.add_argument('--iteration', default=10, type=int)
-
+    parser.add_argument('--gpu_num', help='specify GPU number', default='0', type=str)
     return parser.parse_args()
 
 
@@ -33,8 +33,14 @@ def main(args):
     ob_space = env.observation_space
     Policy = Policy_net('policy', env)
     saver = tf.train.Saver()
+    # sessoinの設定
+    config = tf.ConfigProto(
+            gpu_options=tf.GPUOptions(
+                visible_device_list=args.gpu_num,
+                allow_growth=True
+                ))
 
-    with tf.Session() as sess:
+    with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         saver.restore(sess, args.model)
         obs = env.reset()

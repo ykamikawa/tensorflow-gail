@@ -15,6 +15,7 @@ def argparser():
     parser.add_argument('--savedir', help='save directory', default='trained_models/ppo')
     parser.add_argument('--gamma', default=0.95, type=float)
     parser.add_argument('--iteration', default=int(1e4), type=int)
+    parser.add_argument('--gpu_num', help='specify GPU number', default='0', type=str)
     return parser.parse_args()
 
 
@@ -34,9 +35,15 @@ def main(args):
     PPO = PPOTrain(Policy, Old_Policy, gamma=args.gamma)
     # 学習ログの保存
     saver = tf.train.Saver()
+    # sessoinの設定
+    config = tf.ConfigProto(
+            gpu_options=tf.GPUOptions(
+                visible_device_list=args.gpu_num,
+                allow_growth=True
+                ))
 
     # セッションの作成
-    with tf.Session() as sess:
+    with tf.Session(config=config) as sess:
         # loggerの準備
         writer = tf.summary.FileWriter(args.logdir, sess.graph)
         # Sessionの初期化
@@ -51,11 +58,12 @@ def main(args):
             v_preds = []
             rewards = []
             episode_length = 0
-            # run policy RUN_POLICY_STEPS which is much less than episode length
+            # エピソードループ
             while True:
                 episode_length += 1
                 # prepare to feed placeholder Policy.obs
                 obs = np.stack([obs]).astype(dtype=np.float32)
+                # policy netに状態を入力し,行動と推定収益を取得
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
 
                 act = np.asscalar(act)
@@ -70,6 +78,7 @@ def main(args):
 
                 if done:
                     # next state of terminate state has 0 state value
+                    # エピソード終了時の状態の次の状態のvalueを0にする
                     v_preds_next = v_preds[1:] + [0]
                     obs = env.reset()
                     reward = -1
@@ -88,6 +97,7 @@ def main(args):
                         value=[tf.Summary.Value(tag='episode_reward', simple_value=sum(rewards))]),
                     iteration)
 
+            # 収益が195を越えれば終了する
             if sum(rewards) >= 195:
                 success_num += 1
                 if success_num >= 100:
