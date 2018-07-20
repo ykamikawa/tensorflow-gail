@@ -4,14 +4,15 @@ import tensorflow as tf
 class Policy_net:
     def __init__(self, name: str, env):
         """
-        :param name: string
-        :param env: gym env
+        name: ネットワークの名前
+        env: gymの環境
         """
 
         ob_space = env.observation_space
         act_space = env.action_space
 
         with tf.variable_scope(name):
+            # 観測したtrajectoriesのプレースホルダー
             self.obs = tf.placeholder(dtype=tf.float32, shape=[None] + list(ob_space.shape), name='obs')
 
             with tf.variable_scope('policy_net'):
@@ -33,17 +34,28 @@ class Policy_net:
             self.scope = tf.get_variable_scope().name
 
     def act(self, obs, stochastic=True):
+        '''
+        obs: エージェントの状態
+        戻り値: 行動と収益の期待値
+        stochastic: 確率的な方策を用いるかどうか
+        '''
         if stochastic:
             return tf.get_default_session().run([self.act_stochastic, self.v_preds], feed_dict={self.obs: obs})
         else:
             return tf.get_default_session().run([self.act_deterministic, self.v_preds], feed_dict={self.obs: obs})
 
     def get_action_prob(self, obs):
+        '''
+        obs: エージェントの状態
+        出力: 行動の分布
+        '''
         return tf.get_default_session().run(self.act_probs, feed_dict={self.obs: obs})
 
     def get_variables(self):
+        '''ネットワークのパラメータ取得'''
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
 
     def get_trainable_variables(self):
+        '''学習対象のネットワークのパラメータ取得'''
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
 

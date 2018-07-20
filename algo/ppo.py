@@ -5,12 +5,12 @@ import copy
 class PPOTrain:
     def __init__(self, Policy, Old_Policy, gamma=0.95, clip_value=0.2, c_1=1, c_2=0.01):
         """
-        :param Policy:
-        :param Old_Policy:
-        :param gamma:
-        :param clip_value:
-        :param c_1: parameter for value difference
-        :param c_2: parameter for entropy bonus
+        Policy: 更新対象のpolicy network
+        Old_Policy: 更新前のpolicy network
+        gamma:
+        clip_value:
+        c_1: parameter for value difference
+        c_2: parameter for entropy bonus
         """
 
         self.Policy = Policy

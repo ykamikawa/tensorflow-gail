@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import argparse
 import gym
 import numpy as np
@@ -36,7 +35,8 @@ def main(args):
         sess.run(tf.global_variables_initializer())
 
         obs = env.reset()
-        reward = 0  # do NOT use rewards to update policy
+        # do NOT use rewards to update policy
+        reward = 0
         success_num = 0
 
         for iteration in range(args.iteration):

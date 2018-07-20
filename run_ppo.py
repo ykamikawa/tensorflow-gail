@@ -3,6 +3,8 @@ import argparse
 import gym
 import numpy as np
 import tensorflow as tf
+from tqdm import tqdm
+
 from network_models.policy_net import Policy_net
 from algo.ppo import PPOTrain
 
@@ -17,29 +19,33 @@ def argparser():
 
 
 def main(args):
-    # prepare directory
+    # 保存用ディレクトリの準備
     if not os.path.exists(args.logdir):
         os.makedirs(args.logdir)
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
-    # create environment
+    # 環境のインスタンス
     env = gym.make('CartPole-v0')
     env.seed(0)
     ob_space = env.observation_space
-    # build policy network
+    # 方策の更新前と更新後のpolicy networkの準備
     Policy = Policy_net('policy', env)
     Old_Policy = Policy_net('old_policy', env)
     PPO = PPOTrain(Policy, Old_Policy, gamma=args.gamma)
+    # 学習ログの保存
     saver = tf.train.Saver()
 
+    # セッションの作成
     with tf.Session() as sess:
+        # loggerの準備
         writer = tf.summary.FileWriter(args.logdir, sess.graph)
+        # Sessionの初期化
         sess.run(tf.global_variables_initializer())
         obs = env.reset()
         reward = 0
         success_num = 0
 
-        for iteration in range(args.iteration):
+        for iteration in tqdm(range(args.iteration)):
             observations = []
             actions = []
             v_preds = []
@@ -71,10 +77,12 @@ def main(args):
                 else:
                     obs = next_obs
 
+            # episodeのlog
             writer.add_summary(
                     tf.Summary(
                         value=[tf.Summary.Value(tag='episode_length', simple_value=episode_length)]),
                     iteration)
+            # rewardsのlog
             writer.add_summary(
                     tf.Summary(
                         value=[tf.Summary.Value(tag='episode_reward', simple_value=sum(rewards))]),
