@@ -10,13 +10,14 @@ from algo.behavior_clone import BehavioralCloning
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--savedir', help='name of directory to save model', default='trained_models/bc')
-    parser.add_argument('--max_to_keep', help='number of models to save', default=10, type=int)
-    parser.add_argument('--logdir', help='log directory', default='log/train/bc')
+    parser.add_argument('--savedir', help='学習済みモデルを保存するディレクトリ', default='trained_models/bc')
+    parser.add_argument('--max_to_keep', help='保存する学習済みモデルの個数', default=10, type=int)
+    parser.add_argument('--logdir', help='logのディレクトリ', default='log/train/bc')
     parser.add_argument('--iteration', default=int(1e3), type=int)
-    parser.add_argument('--interval', help='save interval', default=int(1e2), type=int)
-    parser.add_argument('--minibatch_size', default=128, type=int)
-    parser.add_argument('--epoch_num', default=10, type=int)
+    parser.add_argument('--interval', help='保存の間隔', default=int(1e2), type=int)
+    parser.add_argument('--minibatch_size', help='バッチサイズ', default=128, type=int)
+    parser.add_argument('--epoch_num', help='エポック数', default=10, type=int)
+    parser.add_argument('--gpu_num', help='specify GPU number', default='0', type=str)
     return parser.parse_args()
 
 
@@ -29,8 +30,15 @@ def main(args):
     # エキスパートのtrajectories
     observations = np.genfromtxt('trajectory/observations.csv')
     actions = np.genfromtxt('trajectory/actions.csv', dtype=np.int32)
+    # sessoinの設定
+    config = tf.ConfigProto(
+            gpu_options=tf.GPUOptions(
+                visible_device_list=args.gpu_num,
+                allow_growth=True
+                ))
 
-    with tf.Session() as sess:
+    # session
+    with tf.Session(config=config) as sess:
         # logの準備
         writer = tf.summary.FileWriter(args.logdir, sess.graph)
         # 変数の初期化
@@ -38,7 +46,7 @@ def main(args):
 
         # 学習データ
         inp = [observations, actions]
-        # episode
+        # イテレーション開始
         for iteration in tqdm(range(args.iteration)):
             for epoch in range(args.epoch_num):
                 # サンプリングする学習データのインデックスをランダムに選択

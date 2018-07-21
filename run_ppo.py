@@ -42,16 +42,18 @@ def main(args):
                 allow_growth=True
                 ))
 
-    # セッションの作成
+    # session
     with tf.Session(config=config) as sess:
-        # loggerの準備
+        # summaryの準備
         writer = tf.summary.FileWriter(args.logdir, sess.graph)
-        # Sessionの初期化
+        # Sessionn内の変数の初期化
         sess.run(tf.global_variables_initializer())
+        # 環境の初期化
         obs = env.reset()
         reward = 0
         success_num = 0
 
+        # イテレーション開始
         for iteration in tqdm(range(args.iteration)):
             observations = []
             actions = []
@@ -61,19 +63,22 @@ def main(args):
             # エピソードループ
             while True:
                 episode_length += 1
-                # prepare to feed placeholder Policy.obs
+                # 観測をプレースホルダー用に変換
                 obs = np.stack([obs]).astype(dtype=np.float32)
-                # policy netに状態を入力し,行動と推定収益を取得
+                # policy netに観測を入力し,行動と推定収益を取得
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
 
+                # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
 
+                # 現在の状態を追加
                 observations.append(obs)
                 actions.append(act)
                 v_preds.append(v_pred)
                 rewards.append(reward)
 
+                # 方策により決定した行動で環境を更新
                 next_obs, reward, done, info = env.step(act)
 
                 if done:
@@ -89,12 +94,16 @@ def main(args):
             # episodeのlog
             writer.add_summary(
                     tf.Summary(
-                        value=[tf.Summary.Value(tag='episode_length', simple_value=episode_length)]),
+                        value=[tf.Summary.Value(
+                            tag='episode_length',
+                            simple_value=episode_length)]),
                     iteration)
             # rewardsのlog
             writer.add_summary(
                     tf.Summary(
-                        value=[tf.Summary.Value(tag='episode_reward', simple_value=sum(rewards))]),
+                        value=[tf.Summary.Value(
+                            tag='episode_reward',
+                            simple_value=sum(rewards))]),
                     iteration)
 
             # 収益が195を越えれば終了する
@@ -127,17 +136,20 @@ def main(args):
                 sample_indices = np.random.randint(low=0, high=observations.shape[0], size=32)
                 # sample training data
                 sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]
-                PPO.train(obs=sampled_inp[0],
-                          actions=sampled_inp[1],
-                          gaes=sampled_inp[2],
-                          rewards=sampled_inp[3],
-                          v_preds_next=sampled_inp[4])
+                PPO.train(
+                        obs=sampled_inp[0],
+                        actions=sampled_inp[1],
+                        gaes=sampled_inp[2],
+                        rewards=sampled_inp[3],
+                        v_preds_next=sampled_inp[4])
 
-            summary = PPO.get_summary(obs=inp[0],
-                                      actions=inp[1],
-                                      gaes=inp[2],
-                                      rewards=inp[3],
-                                      v_preds_next=inp[4])
+            # PPOのsummaryの取得
+            summary = PPO.get_summary(
+                    obs=inp[0],
+                    actions=inp[1],
+                    gaes=inp[2],
+                    rewards=inp[3],
+                    v_preds_next=inp[4])
 
             writer.add_summary(summary, iteration)
         writer.close()

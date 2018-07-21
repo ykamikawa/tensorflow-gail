@@ -43,24 +43,30 @@ class Policy_net:
 
     def act(self, obs, stochastic=True):
         '''
-        obs: エージェントの状態
-        戻り値: 行動と収益の期待値
+        obs: 観測
         stochastic: 確率的な方策を用いるかどうか
+        return: 行動と収益の期待値
         '''
         if stochastic:
-            return tf.get_default_session().run([self.act_stochastic, self.v_preds], feed_dict={self.obs: obs})
+            return tf.get_default_session().run(
+                    [self.act_stochastic, self.v_preds],
+                    feed_dict={self.obs: obs})
         else:
-            return tf.get_default_session().run([self.act_deterministic, self.v_preds], feed_dict={self.obs: obs})
+            return tf.get_default_session().run(
+                    [self.act_deterministic, self.v_preds],
+                    feed_dict={self.obs: obs})
 
     def get_action_prob(self, obs):
         '''
-        obs: エージェントの状態
-        出力: 行動の分布
+        obs: 観測
+        return: 行動の分布
         '''
-        return tf.get_default_session().run(self.act_probs, feed_dict={self.obs: obs})
+        return tf.get_default_session().run(
+                self.act_probs,
+                feed_dict={self.obs: obs})
 
     def get_variables(self):
-        '''ネットワークのパラメータ取得'''
+        '''ネットワークの全パラメータ取得'''
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
 
     def get_trainable_variables(self):

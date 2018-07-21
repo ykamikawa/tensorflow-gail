@@ -2,13 +2,14 @@ import gym
 import numpy as np
 import tensorflow as tf
 import argparse
+
 from network_models.policy_net import Policy_net
 
 
 def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--modeldir', help='学習済みモデルのディレクトリ', default='trained_models')
-    parser.add_argument('--alg', help='化学習アルゴリズムをgail, ppo, bcから選択', default='gail')
+    parser.add_argument('--alg', help='強化学習アルゴリズムをgail, ppo, bcから選択', default='gail')
     parser.add_argument('--model', help='testに用いる学習済みモデルの番号', default='')
     parser.add_argument('--logdir', help='logのディレクトリ', default='log/test')
     parser.add_argument('--iteration', help='iterarion数', default=int(1e3))
