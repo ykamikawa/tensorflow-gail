@@ -20,22 +20,17 @@ def argparser():
 
 
 def main(args):
-    # 保存用ディレクトリの準備
     if not os.path.exists(args.logdir):
         os.makedirs(args.logdir)
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
-    # 環境のインスタンス
     env = gym.make('CartPole-v0')
     env.seed(0)
     ob_space = env.observation_space
-    # 方策の更新前と更新後のpolicy networkの準備
     Policy = Policy_net('policy', env)
     Old_Policy = Policy_net('old_policy', env)
     PPO = PPOTrain(Policy, Old_Policy, gamma=args.gamma)
-    # 学習ログの保存
     saver = tf.train.Saver()
-    # sessoinの設定
     config = tf.ConfigProto(
             gpu_options=tf.GPUOptions(
                 visible_device_list=args.gpu_num,
@@ -44,46 +39,35 @@ def main(args):
 
     # session
     with tf.Session(config=config) as sess:
-        # summaryの準備
         writer = tf.summary.FileWriter(args.logdir, sess.graph)
-        # Sessionn内の変数の初期化
         sess.run(tf.global_variables_initializer())
-        # 環境の初期化
         obs = env.reset()
         reward = 0
         success_num = 0
 
-        # イテレーション開始
         for iteration in tqdm(range(args.iteration)):
             observations = []
             actions = []
             v_preds = []
             rewards = []
             episode_length = 0
-            # エピソードループ
             while True:
                 episode_length += 1
-                # 観測をプレースホルダー用に変換
                 obs = np.stack([obs]).astype(dtype=np.float32)
-                # policy netに観測を入力し,行動と推定収益を取得
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
 
-                # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
 
-                # 現在の状態を追加
                 observations.append(obs)
                 actions.append(act)
                 v_preds.append(v_pred)
                 rewards.append(reward)
 
-                # 方策により決定した行動で環境を更新
                 next_obs, reward, done, info = env.step(act)
 
                 if done:
                     # next state of terminate state has 0 state value
-                    # エピソード終了時の状態の次の状態のvalueを0にする
                     v_preds_next = v_preds[1:] + [0]
                     obs = env.reset()
                     reward = -1
@@ -91,14 +75,12 @@ def main(args):
                 else:
                     obs = next_obs
 
-            # episodeのlog
             writer.add_summary(
                     tf.Summary(
                         value=[tf.Summary.Value(
                             tag='episode_length',
                             simple_value=episode_length)]),
                     iteration)
-            # rewardsのlog
             writer.add_summary(
                     tf.Summary(
                         value=[tf.Summary.Value(
@@ -106,7 +88,6 @@ def main(args):
                             simple_value=sum(rewards))]),
                     iteration)
 
-            # 収益が195を越えれば終了する
             if sum(rewards) >= 195:
                 success_num += 1
                 if success_num >= 100:
@@ -143,7 +124,6 @@ def main(args):
                         rewards=sampled_inp[3],
                         v_preds_next=sampled_inp[4])
 
-            # PPOのsummaryの取得
             summary = PPO.get_summary(
                     obs=inp[0],
                     actions=inp[1],

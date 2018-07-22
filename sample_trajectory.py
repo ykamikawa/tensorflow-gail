@@ -33,7 +33,6 @@ def main(args):
     ob_space = env.observation_space
     Policy = Policy_net('policy', env)
     saver = tf.train.Saver()
-    # sessoinの設定
     config = tf.ConfigProto(
             gpu_options=tf.GPUOptions(
                 visible_device_list=args.gpu_num,
@@ -45,7 +44,8 @@ def main(args):
         saver.restore(sess, args.model)
         obs = env.reset()
 
-        for iteration in range(args.iteration):  # episode
+        # episode
+        for iteration in range(args.iteration):
             observations = []
             actions = []
             run_steps = 0

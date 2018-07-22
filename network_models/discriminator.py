@@ -50,15 +50,20 @@ class Discriminator:
         return prob
 
     def train(self, expert_s, expert_a, agent_s, agent_a):
-        return tf.get_default_session().run(self.train_op, feed_dict={self.expert_s: expert_s,
-                                                                      self.expert_a: expert_a,
-                                                                      self.agent_s: agent_s,
-                                                                      self.agent_a: agent_a})
+        return tf.get_default_session().run(
+                self.train_op,
+                feed_dict={
+                    self.expert_s: expert_s,
+                    self.expert_a: expert_a,
+                    self.agent_s: agent_s,
+                    self.agent_a: agent_a})
 
     def get_rewards(self, agent_s, agent_a):
-        return tf.get_default_session().run(self.rewards, feed_dict={self.agent_s: agent_s,
-                                                                     self.agent_a: agent_a})
+        return tf.get_default_session().run(
+                self.rewards,
+                feed_dict={
+                    self.agent_s: agent_s,
+                    self.agent_a: agent_a})
 
     def get_trainable_variables(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
-

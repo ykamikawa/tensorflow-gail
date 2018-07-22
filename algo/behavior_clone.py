@@ -2,11 +2,10 @@ import tensorflow as tf
 
 
 class BehavioralCloning:
-    '''BehavioralCloningクラス'''
+    '''BehavioralCloning'''
     def __init__(self, Policy):
         self.Policy = Policy
 
-        # エキスパートの行動
         self.actions_expert = tf.placeholder(tf.int32, shape=[None], name='actions_expert')
         actions_vec = tf.one_hot(self.actions_expert, depth=self.Policy.act_probs.shape[1], dtype=tf.float32)
 
@@ -16,11 +15,9 @@ class BehavioralCloning:
         # lossのsummary
         tf.summary.scalar('loss/cross_entropy', loss)
 
-        # 最適化
         optimizer = tf.train.AdamOptimizer()
         self.train_op = optimizer.minimize(loss)
 
-        # summaryの書き込み
         self.merged = tf.summary.merge_all()
 
     def train(self, obs, actions):
