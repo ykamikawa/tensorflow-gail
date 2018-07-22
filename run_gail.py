@@ -8,7 +8,6 @@ from network_models.policy_net import Policy_net
 from network_models.discriminator import Discriminator
 from algo.ppo import PPOTrain
 
-# 文字コードのテスト
 
 def argparser():
     parser = argparse.ArgumentParser()

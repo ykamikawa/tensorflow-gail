@@ -9,6 +9,7 @@ from network_models.policy_net import Policy_net
 from algo.ppo import PPOTrain
 
 
+# 日本語コードのtest
 def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--logdir', help='log directory', default='log/train/ppo')
