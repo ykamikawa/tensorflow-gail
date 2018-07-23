@@ -29,11 +29,12 @@ def main(args):
     env = gym.make('CartPole-v0')
     env.seed(0)
     ob_space = env.observation_space
-    # policy net作成
+    # policy net
     Policy = Policy_net('policy', env)
     Old_Policy = Policy_net('old_policy', env)
     # ppo学習インスタンス
     PPO = PPOTrain(Policy, Old_Policy, gamma=args.gamma)
+
     # tensorflow saver
     saver = tf.train.Saver()
     # session config
@@ -52,6 +53,7 @@ def main(args):
         obs = env.reset()
         reward = 0
         success_num = 0
+
         # episode loop
         for iteration in tqdm(range(args.iteration)):
             observations = []
@@ -59,7 +61,7 @@ def main(args):
             v_preds = []
             rewards = []
             episode_length = 0
-            # episodeの実行
+            # run episode
             while True:
                 episode_length += 1
                 # ネットワーク入力用にobsを変換
@@ -77,10 +79,11 @@ def main(args):
                 v_preds.append(v_pred)
                 rewards.append(reward)
 
-                # policy netの推定行動で状態の更新
+                # policy netで推定した行動で状態の更新
                 next_obs, reward, done, info = env.step(act)
 
                 # episode終了判定
+                # episodeが終了していたら次のepisodeを開始
                 if done:
                     v_preds_next = v_preds[1:] + [0]
                     obs = env.reset()
@@ -114,25 +117,32 @@ def main(args):
             else:
                 success_num = 0
 
-            gaes = PPO.get_gaes(rewards=rewards, v_preds=v_preds, v_preds_next=v_preds_next)
-
-            # convert list to numpy array for feeding tf.placeholder
+            # policy netによるtrajectryをプレースホルダー用に変換
             observations = np.reshape(observations, newshape=[-1] + list(ob_space.shape))
             actions = np.array(actions).astype(dtype=np.int32)
+
+            # rewardsをプレースホルダー用に変換
+            rewards = np.array(rewards).astype(dtype=np.float32)
+
+            # gaesの取得
+            gaes = PPO.get_gaes(rewards=rewards, v_preds=v_preds, v_preds_next=v_preds_next)
             gaes = np.array(gaes).astype(dtype=np.float32)
             gaes = (gaes - gaes.mean()) / gaes.std()
-            rewards = np.array(rewards).astype(dtype=np.float32)
             v_preds_next = np.array(v_preds_next).astype(dtype=np.float32)
 
+            # PPO学習データ
+            inp = [observations, actions, gaes, rewards, v_preds_next]
+            # Old_Policyにパラメータを代入
             PPO.assign_policy_parameters()
 
-            inp = [observations, actions, gaes, rewards, v_preds_next]
-
-            # train
+            # PPOの学習
             for epoch in range(6):
-                # sample indices from [low, high)
-                sample_indices = np.random.randint(low=0, high=observations.shape[0], size=32)
-                # sample training data
+                # 学習データサンプル用のインデックスを取得
+                sample_indices = np.random.randint(
+                        low=0,
+                        high=observations.shape[0],
+                        size=32)
+                # PPO学習データをサンプル
                 sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]
                 PPO.train(
                         obs=sampled_inp[0],
@@ -141,6 +151,7 @@ def main(args):
                         rewards=sampled_inp[3],
                         v_preds_next=sampled_inp[4])
 
+            # summaryの取得
             summary = PPO.get_summary(
                     obs=inp[0],
                     actions=inp[1],

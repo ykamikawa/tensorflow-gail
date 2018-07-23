@@ -66,8 +66,10 @@ def main(args):
             # summaryの取得
             summary = BC.get_summary(obs=inp[0], actions=inp[1])
 
+            # internvalごとに学習結果を保存
             if (iteration+1) % args.interval == 0:
                 saver.save(sess, args.savedir + '/model.ckpt', global_step=iteration+1)
+            # summaryの追加
             writer.add_summary(summary, iteration)
         writer.close()
 

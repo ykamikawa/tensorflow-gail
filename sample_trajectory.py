@@ -1,15 +1,16 @@
 import argparse
 import gym
 import numpy as np
-from network_models.policy_net import Policy_net
 import tensorflow as tf
 
+from network_models.policy_net import Policy_net
 
-# noinspection PyTypeChecker
+
 def open_file_and_save(file_path, data):
     """
-    :param file_path: type==string
-    :param data:
+    csv保存用のindent checker
+    file_path: type==string
+    data:
     """
     try:
         with open(file_path, 'ab') as f_handle:
@@ -28,21 +29,30 @@ def argparser():
 
 
 def main(args):
+    # gym環境作成
     env = gym.make('CartPole-v0')
     env.seed(0)
     ob_space = env.observation_space
+    # policy net
     Policy = Policy_net('policy', env)
+
+    # tensorflow saver
     saver = tf.train.Saver()
+    # session config
     config = tf.ConfigProto(
             gpu_options=tf.GPUOptions(
                 visible_device_list=args.gpu_num,
                 allow_growth=True
                 ))
-
+    # start session
     with tf.Session(config=config) as sess:
+        # Sessionの初期化
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, args.model)
+        # 状態の初期化
         obs = env.reset()
+
+        # エキスパートの学習済みモデルを読み込み
+        saver.restore(sess, args.model)
 
         # episode
         for iteration in range(args.iteration):
