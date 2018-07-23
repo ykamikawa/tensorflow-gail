@@ -20,54 +20,68 @@ def argparser():
 
 
 def main(args):
+    # prepare log dir
     if not os.path.exists(args.logdir):
         os.makedirs(args.logdir)
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
+    # gym環境作成
     env = gym.make('CartPole-v0')
     env.seed(0)
     ob_space = env.observation_space
+    # policy net作成
     Policy = Policy_net('policy', env)
     Old_Policy = Policy_net('old_policy', env)
+    # ppo学習インスタンス
     PPO = PPOTrain(Policy, Old_Policy, gamma=args.gamma)
+    # tensorflow saver
     saver = tf.train.Saver()
+    # session config
     config = tf.ConfigProto(
             gpu_options=tf.GPUOptions(
                 visible_device_list=args.gpu_num,
                 allow_growth=True
                 ))
-
-    # session
+    # start session
     with tf.Session(config=config) as sess:
+        # summary writer
         writer = tf.summary.FileWriter(args.logdir, sess.graph)
+        # Sessionの初期化
         sess.run(tf.global_variables_initializer())
+        # 状態の初期化
         obs = env.reset()
         reward = 0
         success_num = 0
-
+        # episode loop
         for iteration in tqdm(range(args.iteration)):
             observations = []
             actions = []
             v_preds = []
             rewards = []
             episode_length = 0
+            # episodeの実行
             while True:
                 episode_length += 1
+                # ネットワーク入力用にobsを変換
                 obs = np.stack([obs]).astype(dtype=np.float32)
+                # 行動と価値を推定
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
 
+                # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
 
+                # episodeの各変数を追加
                 observations.append(obs)
                 actions.append(act)
                 v_preds.append(v_pred)
                 rewards.append(reward)
 
+                # policy netの推定行動で状態の更新
                 next_obs, reward, done, info = env.step(act)
 
+                # episode終了判定
                 if done:
-                    # next state of terminate state has 0 state value
                     v_preds_next = v_preds[1:] + [0]
                     obs = env.reset()
                     reward = -1
@@ -75,6 +89,7 @@ def main(args):
                 else:
                     obs = next_obs
 
+            # summary追加
             writer.add_summary(
                     tf.Summary(
                         value=[tf.Summary.Value(
@@ -88,8 +103,10 @@ def main(args):
                             simple_value=sum(rewards))]),
                     iteration)
 
+            # episode成功判定
             if sum(rewards) >= 195:
                 success_num += 1
+                # 連続で100回成功していればepisode loopを終了
                 if success_num >= 100:
                     saver.save(sess, args.savedir+'/model.ckpt')
                     print('Clear!! Model saved.')
