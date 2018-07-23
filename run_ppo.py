@@ -64,7 +64,7 @@ def main(args):
             # run episode
             while True:
                 episode_length += 1
-                # ネットワーク入力用にobsを変換
+                # プレースホルダー用に変換
                 obs = np.stack([obs]).astype(dtype=np.float32)
                 # 行動と価値を推定
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
@@ -119,8 +119,7 @@ def main(args):
 
             # policy netによるtrajectryをプレースホルダー用に変換
             observations = np.reshape(observations, newshape=[-1] + list(ob_space.shape))
-            actions = np.array(actions).astype(dtype=np.int32)
-
+            actions = np.array(actions).astype(dtype=np.int32) 
             # rewardsをプレースホルダー用に変換
             rewards = np.array(rewards).astype(dtype=np.float32)
 

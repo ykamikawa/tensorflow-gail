@@ -3,20 +3,24 @@ import copy
 
 
 class PPOTrain:
+    '''PPO学習用クラス'''
     def __init__(self, Policy, Old_Policy, gamma=0.95, clip_value=0.2, c_1=1, c_2=0.01):
-
+        # Policy network
         self.Policy = Policy
         self.Old_Policy = Old_Policy
         self.gamma = gamma
 
+        # 学習可能な変数の取得
         pi_trainable = self.Policy.get_trainable_variables()
         old_pi_trainable = self.Old_Policy.get_trainable_variables()
 
+        # インスタンス作成時にPolicyとOld_Policyのパラメータを同じにしておく
         with tf.variable_scope('assign_op'):
             self.assign_ops = []
             for v_old, v in zip(old_pi_trainable, pi_trainable):
                 self.assign_ops.append(tf.assign(v_old, v))
 
+        # 入力用のプレースホルダー定義
         with tf.variable_scope('train_inp'):
             self.actions = tf.placeholder(dtype=tf.int32, shape=[None], name='actions')
             self.rewards = tf.placeholder(dtype=tf.float32, shape=[None], name='rewards')
@@ -34,7 +38,9 @@ class PPOTrain:
 
         with tf.variable_scope('loss'):
             # ratios = tf.divide(act_probs, act_probs_old)
-            ratios = tf.exp(tf.log(tf.clip_by_value(act_probs, 1e-10, 1.0)) - tf.log(tf.clip_by_value(act_probs_old, 1e-10, 1.0)))
+            ratios = tf.exp(
+                    tf.log(
+                        tf.clip_by_value(act_probs, 1e-10, 1.0)) - tf.log(tf.clip_by_value(act_probs_old, 1e-10, 1.0)))
             clipped_ratios = tf.clip_by_value(
                     ratios,
                     clip_value_min=1 - clip_value,
@@ -75,6 +81,7 @@ class PPOTrain:
         self.train_op = optimizer.minimize(loss, var_list=pi_trainable)
 
     def train(self, obs, actions, gaes, rewards, v_preds_next):
+        '''train operation実行関数'''
         tf.get_default_session().run(
                 self.train_op,
                 feed_dict={
@@ -86,6 +93,7 @@ class PPOTrain:
                     self.gaes: gaes})
 
     def get_summary(self, obs, actions, gaes, rewards, v_preds_next):
+        '''summary operation実行関数'''
         return tf.get_default_session().run(
                 self.merged,
                 feed_dict={
@@ -97,18 +105,33 @@ class PPOTrain:
                     self.gaes: gaes})
 
     def assign_policy_parameters(self):
+        '''PolicyのパラメータをOld_Policyに代入'''
         return tf.get_default_session().run(self.assign_ops)
 
     def get_gaes(self, rewards, v_preds, v_preds_next):
-        '''generative advantage estimator'''
+        '''
+        generative advantage estimator
+        rewards: 即時報酬系列
+        v_preds: 状態価値
+        v_preds_next: 次の状態の状態価値
+        '''
         deltas = [r_t + self.gamma * v_next - v for r_t, v_next, v in zip(rewards, v_preds_next, v_preds)]
         # calculate generative advantage estimator(lambda = 1), see ppo paper eq(11)
         gaes = copy.deepcopy(deltas)
-        for t in reversed(range(len(gaes) - 1)):  # is T-1, where T is time step which run policy
+        # is T-1, where T is time step which run policy
+        for t in reversed(range(len(gaes) - 1)):
             gaes[t] = gaes[t] + self.gamma * gaes[t + 1]
         return gaes
 
     def get_grad(self, obs, actions, gaes, rewards, v_preds_next):
+        '''
+        勾配計算関数
+        obs: 状態
+        actions: 行動系列
+        gaes: generative advantage estimator
+        rewards: 即時報酬系列
+        v_preds_next: 次の状態価値関数
+        '''
         return tf.get_default_session().run(
                 self.gradients,
                 feed_dict={

@@ -61,17 +61,24 @@ def main(args):
             run_steps = 0
             while True:
                 run_steps += 1
-                # prepare to feed placeholder Policy.obs
+                # プレースホルダー用に変換
                 obs = np.stack([obs]).astype(dtype=np.float32)
 
+                # 行動と価値を推定
                 act, _ = Policy.act(obs=obs, stochastic=True)
+
+                # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
 
+                # episodeの各変数を追加
                 observations.append(obs)
                 actions.append(act)
 
+                # policy netで推定した行動で状態の更新
                 next_obs, reward, done, info = env.step(act)
 
+                # episode終了判定
+                # episodeが終了していたら次のepisodeを開始
                 if done:
                     print(run_steps)
                     obs = env.reset()
@@ -79,9 +86,11 @@ def main(args):
                 else:
                     obs = next_obs
 
+            # policy netによるtrajectryをcsv保存用に変換
             observations = np.reshape(observations, newshape=[-1] + list(ob_space.shape))
             actions = np.array(actions).astype(dtype=np.int32)
 
+            # trajectoryを保存
             open_file_and_save('trajectory/observations.csv', observations)
             open_file_and_save('trajectory/actions.csv', actions)
 
