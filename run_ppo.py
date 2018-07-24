@@ -51,40 +51,51 @@ def main(args):
         sess.run(tf.global_variables_initializer())
         # 状態の初期化
         obs = env.reset()
+        # 報酬の初期化
         reward = 0
+        # episodeの成功回数
         success_num = 0
 
         # episode loop
         for iteration in tqdm(range(args.iteration)):
+            # episodeのtrajectory配列
+            # 状態
             observations = []
+            # Policyで決まる行動
             actions = []
+            # 状態価値
             v_preds = []
+            # 即時報酬
             rewards = []
+            # episodeのstep回数
             episode_length = 0
             # run episode
             while True:
                 episode_length += 1
                 # プレースホルダー用に変換
                 obs = np.stack([obs]).astype(dtype=np.float32)
-                # 行動と価値を推定
+                # 行動と状態価値を推定
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
 
                 # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
 
+                # policyによる行動で状態を更新
+                next_obs, reward, done, info = env.step(act)
+
                 # episodeの各変数を追加
+                # (s_t, a_t, v_t, r_t)
                 observations.append(obs)
                 actions.append(act)
                 v_preds.append(v_pred)
                 rewards.append(reward)
 
-                # policy netで推定した行動で状態の更新
-                next_obs, reward, done, info = env.step(act)
 
                 # episode終了判定
                 # episodeが終了していたら次のepisodeを開始
                 if done:
+                    # v_t+1の配列
                     v_preds_next = v_preds[1:] + [0]
                     obs = env.reset()
                     reward = -1
@@ -119,7 +130,7 @@ def main(args):
 
             # policy netによるtrajectryをプレースホルダー用に変換
             observations = np.reshape(observations, newshape=[-1] + list(ob_space.shape))
-            actions = np.array(actions).astype(dtype=np.int32) 
+            actions = np.array(actions).astype(dtype=np.int32)
             # rewardsをプレースホルダー用に変換
             rewards = np.array(rewards).astype(dtype=np.float32)
 
@@ -129,7 +140,7 @@ def main(args):
             gaes = (gaes - gaes.mean()) / gaes.std()
             v_preds_next = np.array(v_preds_next).astype(dtype=np.float32)
 
-            # PPO学習データ
+            # エージェントのexperience
             inp = [observations, actions, gaes, rewards, v_preds_next]
             # Old_Policyにパラメータを代入
             PPO.assign_policy_parameters()
