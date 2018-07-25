@@ -51,24 +51,20 @@ def main(args):
         sess.run(tf.global_variables_initializer())
         # 状態の初期化
         obs = env.reset()
-        # 報酬の初期化
-        reward = 0
         # episodeの成功回数
         success_num = 0
 
         # episode loop
         for iteration in tqdm(range(args.iteration)):
             # episodeのtrajectory配列
-            # 状態
+            # buffer
             observations = []
-            # Policyで決まる行動
             actions = []
-            # 状態価値
             v_preds = []
-            # 即時報酬
             rewards = []
             # episodeのstep回数
             episode_length = 0
+            reward = 0
             # run episode
             while True:
                 episode_length += 1
@@ -81,9 +77,6 @@ def main(args):
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
 
-                # policyによる行動で状態を更新
-                next_obs, reward, done, info = env.step(act)
-
                 # episodeの各変数を追加
                 # (s_t, a_t, v_t, r_t)
                 observations.append(obs)
@@ -91,6 +84,8 @@ def main(args):
                 v_preds.append(v_pred)
                 rewards.append(reward)
 
+                # policyによる行動で状態を更新
+                next_obs, reward, done, info = env.step(act)
 
                 # episode終了判定
                 # episodeが終了していたら次のepisodeを開始

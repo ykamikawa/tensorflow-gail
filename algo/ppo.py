@@ -110,7 +110,8 @@ class PPOTrain:
 
     def get_gaes(self, rewards, v_preds, v_preds_next):
         '''
-        generative advantage estimator
+        GAE: generative advantage estimator
+        Advantage関数で何ステップ先まで考慮すべきかを1つの式で表現
         rewards: 即時報酬系列
         v_preds: 状態価値
         v_preds_next: 次の状態の状態価値

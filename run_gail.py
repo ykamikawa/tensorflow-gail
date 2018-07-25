@@ -1,3 +1,4 @@
+import os
 import argparse
 import gym
 import numpy as np
@@ -57,15 +58,16 @@ def main(args):
         sess.run(tf.global_variables_initializer())
         # 状態の初期化
         obs = env.reset()
-        reward = 0
         success_num = 0
         # episode loop
         for iteration in tqdm(range(args.iteration)):
+            # buffer
             observations = []
             actions = []
             rewards = []
             v_preds = []
             run_policy_steps = 0
+            reward = 0
             # run episode
             while True:
                 run_policy_steps += 1
@@ -77,15 +79,14 @@ def main(args):
                 # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
+                # policy netの推定行動で状態の更新
+                next_obs, reward, done, info = env.step(act)
 
                 # episodeの各変数を追加
                 observations.append(obs)
                 actions.append(act)
                 v_preds.append(v_pred)
                 rewards.append(reward)
-
-                # policy netの推定行動で状態の更新
-                next_obs, reward, done, info = env.step(act)
 
                 # episode終了判定
                 if done:
