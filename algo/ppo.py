@@ -27,57 +27,66 @@ class PPOTrain:
             self.v_preds_next = tf.placeholder(dtype=tf.float32, shape=[None], name='v_preds_next')
             self.gaes = tf.placeholder(dtype=tf.float32, shape=[None], name='gaes')
 
+        # ある行動についてだけのprobを取得
         act_probs = self.Policy.act_probs
-        act_probs_old = self.Old_Policy.act_probs
-
         act_probs = act_probs * tf.one_hot(indices=self.actions, depth=act_probs.shape[1])
         act_probs = tf.reduce_sum(act_probs, axis=1)
 
+        act_probs_old = self.Old_Policy.act_probs
         act_probs_old = act_probs_old * tf.one_hot(indices=self.actions, depth=act_probs_old.shape[1])
         act_probs_old = tf.reduce_sum(act_probs_old, axis=1)
 
         with tf.variable_scope('loss'):
             # ratios = tf.divide(act_probs, act_probs_old)
+            # trust regionを計算 をpi(a|s)/pi_old(a|s)
+            # 更新後の方策と更新前の方策のKL距離の制約を与える
             ratios = tf.exp(
                     tf.log(
                         tf.clip_by_value(act_probs, 1e-10, 1.0)) - tf.log(tf.clip_by_value(act_probs_old, 1e-10, 1.0)))
+            # ratiosをclipping
             clipped_ratios = tf.clip_by_value(
                     ratios,
                     clip_value_min=1 - clip_value,
                     clip_value_max=1 + clip_value)
+            # clipping前とclipping後のlossで小さい方を使う
             loss_clip = tf.minimum(
                     tf.multiply(self.gaes, ratios),
                     tf.multiply(self.gaes, clipped_ratios))
             loss_clip = tf.reduce_mean(loss_clip)
+            # summaryにclipping lossを追加
             tf.summary.scalar('loss_clip', loss_clip)
 
-            # construct computation graph for loss of entropy bonus
+            # 探索を促すためのentropy制約項
+            # 方策のentropyが小さくなりすぎるのを防ぐ
             entropy = -tf.reduce_sum(
-                    self.Policy.act_probs * tf.log(tf.clip_by_value(
-                        self.Policy.act_probs,
-                        1e-10,
-                        1.0)),
+                    self.Policy.act_probs * tf.log(tf.clip_by_value(self.Policy.act_probs,
+                                                                    1e-10,
+                                                                    1.0)),
                     axis=1)
-            # mean of entropy of pi(obs)
             entropy = tf.reduce_mean(entropy, axis=0)
             tf.summary.scalar('entropy', entropy)
 
-            # construct computation graph for loss of value function
+            # 状態価値の分散を大きくしないための制約項
             v_preds = self.Policy.v_preds
             loss_vf = tf.squared_difference(self.rewards + self.gamma * self.v_preds_next, v_preds)
             loss_vf = tf.reduce_mean(loss_vf)
             tf.summary.scalar('value_difference', loss_vf)
 
-            # construct computation graph for loss
+            # 以下の式を最大化
             loss = loss_clip - c_1 * loss_vf + c_2 * entropy
 
+            # tensorflowのoptimizerは最小最適化を行うため
             loss = -loss
             tf.summary.scalar('total', loss)
 
+        # 全てのsummaryを取得するoperation
         self.merged = tf.summary.merge_all()
 
+        # optimizer
         optimizer = tf.train.AdamOptimizer(learning_rate=1e-4, epsilon=1e-5)
+        # 勾配の取得
         self.gradients = optimizer.compute_gradients(loss, var_list=pi_trainable)
+        # train operation
         self.train_op = optimizer.minimize(loss, var_list=pi_trainable)
 
     def train(self, obs, actions, gaes, rewards, v_preds_next):
@@ -116,6 +125,8 @@ class PPOTrain:
         v_preds: 状態価値
         v_preds_next: 次の状態の状態価値
         '''
+        # advantage関数
+        # 現時点で予測している状態価値と実際に行動してみたあとの状態価値との差
         deltas = [r_t + self.gamma * v_next - v for r_t, v_next, v in zip(rewards, v_preds_next, v_preds)]
         # calculate generative advantage estimator(lambda = 1), see ppo paper eq(11)
         gaes = copy.deepcopy(deltas)

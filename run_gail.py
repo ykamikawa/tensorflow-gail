@@ -67,18 +67,19 @@ def main(args):
             rewards = []
             v_preds = []
             run_policy_steps = 0
-            reward = 0
             # run episode
             while True:
                 run_policy_steps += 1
                 # ネットワーク入力用にobsを変換
                 obs = np.stack([obs]).astype(dtype=np.float32)
+
                 # 行動と価値を推定
                 act, v_pred = Policy.act(obs=obs, stochastic=True)
 
                 # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
+
                 # policy netの推定行動で状態の更新
                 next_obs, reward, done, info = env.step(act)
 
@@ -127,39 +128,40 @@ def main(args):
             ###########################
             # GAILの変更点はここだけ
             # discriminatorでエキスパートの報酬に近づける
-            # discriminator学習
+            # discriminator学習 2回
             for i in range(2):
                 D.train(expert_s=expert_observations,
                         expert_a=expert_actions,
                         agent_s=observations,
                         agent_a=actions)
 
-            # discriminatorからpolicy netのrewardを取得
+            # get d_rewards from discrminator
             d_rewards = D.get_rewards(agent_s=observations, agent_a=actions)
-            # rewardsをプレースホルダー用に変換
+            # transform d_rewards to numpy for placeholder
             d_rewards = np.reshape(d_rewards, newshape=[-1]).astype(dtype=np.float32)
             ###########################
 
-            # gaesの取得
+            # get generalized advantage estimator
             gaes = PPO.get_gaes(rewards=d_rewards, v_preds=v_preds, v_preds_next=v_preds_next)
             gaes = np.array(gaes).astype(dtype=np.float32)
             # gaes = (gaes - gaes.mean()) / gaes.std()
             v_preds_next = np.array(v_preds_next).astype(dtype=np.float32)
 
-            # PPO学習データ
+            # ppo input data whose rewards is discriminator rewards
             inp = [observations, actions, gaes, d_rewards, v_preds_next]
-            # Old_Policyにパラメータを代入
+            # assign parameters to old policy
             PPO.assign_policy_parameters()
 
-            # PPOの学習
+            # train PPO
             for epoch in range(6):
-                # 学習データサンプル用のインデックスを取得
+                # sample index
                 sample_indices = np.random.randint(
                         low=0,
                         high=observations.shape[0],
                         size=32)
-                # PPO学習データをサンプル
+                # sampling from input data
                 sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]
+                # run ppo
                 PPO.train(
                         obs=sampled_inp[0],
                         actions=sampled_inp[1],
@@ -167,7 +169,7 @@ def main(args):
                         rewards=sampled_inp[3],
                         v_preds_next=sampled_inp[4])
 
-            # summaryの取得
+            # get summary
             summary = PPO.get_summary(
                     obs=inp[0],
                     actions=inp[1],
@@ -175,6 +177,7 @@ def main(args):
                     rewards=inp[3],
                     v_preds_next=inp[4])
 
+            # add summary
             writer.add_summary(summary, iteration)
         writer.close()
 

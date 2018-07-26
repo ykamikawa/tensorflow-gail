@@ -1,3 +1,4 @@
+import os
 import gym
 import numpy as np
 import tensorflow as tf
@@ -15,7 +16,7 @@ def argparser():
     parser.add_argument('--logdir', help='', default='log/test')
     parser.add_argument('--iteration', help='', default=int(1e3))
     parser.add_argument('--stochastic', help='', action='store_false')
-    parser.add_argument('--gpu_num', help='specify GPU number', default='-1', type=str)
+    parser.add_argument('--gpu_num', help='specify GPU number', default='0', type=str)
     return parser.parse_args()
 
 
@@ -50,7 +51,6 @@ def main(args):
             saver.restore(sess, args.modeldir+'/'+args.alg+'/'+'model.ckpt-'+args.model)
         # 状態の初期化
         obs = env.reset()
-        reward = 0
         success_num = 0
 
         # episode loop
@@ -69,11 +69,11 @@ def main(args):
                 # 要素数が1の配列をスカラーに変換
                 act = np.asscalar(act)
 
-                # episodeの各変数を追加
-                rewards.append(reward)
-
                 # policy netで推定した行動で状態の更新
                 next_obs, reward, done, info = env.step(act)
+
+                # episodeの各変数を追加
+                rewards.append(reward)
 
                 # episode終了判定
                 # episodeが終了していたら次のepisodeを開始

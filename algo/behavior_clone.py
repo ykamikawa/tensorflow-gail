@@ -12,14 +12,14 @@ class BehavioralCloning:
         # onehot vectorに変換
         actions_vec = tf.one_hot(self.actions_expert, depth=self.Policy.act_probs.shape[1], dtype=tf.float32)
 
-        # cross_entropy loss
+        # cross_entropy lossを最小化
         loss = -tf.reduce_sum(actions_vec * tf.log(tf.clip_by_value(self.Policy.act_probs, 1e-10, 1.0)), 1)
         loss = tf.reduce_mean(loss)
+        # lossをsummaryに追加
         tf.summary.scalar('loss/cross_entropy', loss)
 
         # optimizer
         optimizer = tf.train.AdamOptimizer()
-
         # train operation
         self.train_op = optimizer.minimize(loss)
 

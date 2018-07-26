@@ -64,7 +64,6 @@ def main(args):
             rewards = []
             # episodeのstep回数
             episode_length = 0
-            reward = 0
             # run episode
             while True:
                 episode_length += 1
@@ -77,15 +76,15 @@ def main(args):
                 act = np.asscalar(act)
                 v_pred = np.asscalar(v_pred)
 
+                # policyによる行動で状態を更新
+                next_obs, reward, done, info = env.step(act)
+
                 # episodeの各変数を追加
                 # (s_t, a_t, v_t, r_t)
                 observations.append(obs)
                 actions.append(act)
                 v_preds.append(v_pred)
                 rewards.append(reward)
-
-                # policyによる行動で状態を更新
-                next_obs, reward, done, info = env.step(act)
 
                 # episode終了判定
                 # episodeが終了していたら次のepisodeを開始
