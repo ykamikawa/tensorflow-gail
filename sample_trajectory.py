@@ -1,4 +1,5 @@
 import argparse
+
 import gym
 import numpy as np
 import tensorflow as tf
@@ -13,37 +14,39 @@ def open_file_and_save(file_path, data):
     data:
     """
     try:
-        with open(file_path, 'ab') as f_handle:
-            np.savetxt(f_handle, data, fmt='%s')
+        with open(file_path, "ab") as f_handle:
+            np.savetxt(f_handle, data, fmt="%s")
     except FileNotFoundError:
-        with open(file_path, 'wb') as f_handle:
-            np.savetxt(f_handle, data, fmt='%s')
+        with open(file_path, "wb") as f_handle:
+            np.savetxt(f_handle, data, fmt="%s")
 
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', help='filename of model to test', default='trained_models/ppo/model.ckpt')
-    parser.add_argument('--iteration', default=10, type=int)
-    parser.add_argument('--gpu_num', help='specify GPU number', default='0', type=str)
+    parser.add_argument(
+        "--model",
+        help="filename of model to test",
+        default="trained_models/ppo/model.ckpt",
+    )
+    parser.add_argument("--iteration", default=10, type=int)
+    parser.add_argument("--gpu_num", help="specify GPU number", default="0", type=str)
     return parser.parse_args()
 
 
 def main(args):
     # gym環境作成
-    env = gym.make('CartPole-v0')
+    env = gym.make("CartPole-v0")
     env.seed(0)
     ob_space = env.observation_space
     # policy net
-    Policy = Policy_net('policy', env)
+    Policy = Policy_net("policy", env)
 
     # tensorflow saver
     saver = tf.train.Saver()
     # session config
     config = tf.ConfigProto(
-            gpu_options=tf.GPUOptions(
-                visible_device_list=args.gpu_num,
-                allow_growth=True
-                ))
+        gpu_options=tf.GPUOptions(visible_device_list=args.gpu_num, allow_growth=True)
+    )
     # start session
     with tf.Session(config=config) as sess:
         # Sessionの初期化
@@ -87,14 +90,16 @@ def main(args):
                     obs = next_obs
 
             # policy netによるtrajectryをcsv保存用に変換
-            observations = np.reshape(observations, newshape=[-1] + list(ob_space.shape))
+            observations = np.reshape(
+                observations, newshape=[-1] + list(ob_space.shape)
+            )
             actions = np.array(actions).astype(dtype=np.int32)
 
             # trajectoryを保存
-            open_file_and_save('trajectory/observations.csv', observations)
-            open_file_and_save('trajectory/actions.csv', actions)
+            open_file_and_save("trajectory/observations.csv", observations)
+            open_file_and_save("trajectory/actions.csv", actions)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = argparser()
     main(args)

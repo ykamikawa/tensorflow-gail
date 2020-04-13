@@ -1,22 +1,23 @@
+import argparse
 import os
+
 import gym
 import numpy as np
-import tensorflow as tf
-import argparse
 from tqdm import tqdm
+import tensorflow as tf
 
 from network_models.policy_net import Policy_net
 
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--modeldir', help='', default='trained_models')
-    parser.add_argument('--alg', help='', default='gail')
-    parser.add_argument('--model', help='', default='')
-    parser.add_argument('--logdir', help='', default='log/test')
-    parser.add_argument('--iteration', help='', default=int(1e3))
-    parser.add_argument('--stochastic', help='', action='store_false')
-    parser.add_argument('--gpu_num', help='specify GPU number', default='0', type=str)
+    parser.add_argument("--modeldir", help="", default="trained_models")
+    parser.add_argument("--alg", help="", default="gail")
+    parser.add_argument("--model", help="", default="")
+    parser.add_argument("--logdir", help="", default="log/test")
+    parser.add_argument("--iteration", help="", default=int(1e3))
+    parser.add_argument("--stochastic", help="", action="store_false")
+    parser.add_argument("--gpu_num", help="specify GPU number", default="0", type=str)
     return parser.parse_args()
 
 
@@ -25,18 +26,16 @@ def main(args):
     if not os.path.exists(args.logdir):
         os.makedirs(args.logdir)
     # gym環境作成
-    env = gym.make('CartPole-v0')
+    env = gym.make("CartPole-v0")
     # policy net
-    Policy = Policy_net('policy', env)
+    Policy = Policy_net("policy", env)
     # tensorflow saver
     saver = tf.train.Saver()
 
     # session config
     config = tf.ConfigProto(
-            gpu_options=tf.GPUOptions(
-                visible_device_list=args.gpu_num,
-                allow_growth=True
-                ))
+        gpu_options=tf.GPUOptions(visible_device_list=args.gpu_num, allow_growth=True)
+    )
     # start session
     with tf.Session(config=config) as sess:
         # summary writer
@@ -44,11 +43,13 @@ def main(args):
         # Sessionの初期化
         sess.run(tf.global_variables_initializer())
         # 学習済みモデルの読み込み
-        if args.model == '':
-            saver.restore(sess, args.modeldir+'/'+args.alg+'/'+'model.ckpt')
+        if args.model == "":
+            saver.restore(sess, args.modeldir + "/" + args.alg + "/" + "model.ckpt")
         else:
             # モデル番号の選択
-            saver.restore(sess, args.modeldir+'/'+args.alg+'/'+'model.ckpt-'+args.model)
+            saver.restore(
+                sess, args.modeldir + "/" + args.alg + "/" + "model.ckpt-" + args.model
+            )
         # 状態の初期化
         obs = env.reset()
         success_num = 0
@@ -86,25 +87,33 @@ def main(args):
 
             # summary追加
             writer.add_summary(
-                    tf.Summary(
-                        value=[tf.Summary.Value(
-                            tag='episode_length',
-                            simple_value=run_policy_steps)]),
-                    iteration)
+                tf.Summary(
+                    value=[
+                        tf.Summary.Value(
+                            tag="episode_length", simple_value=run_policy_steps
+                        )
+                    ]
+                ),
+                iteration,
+            )
             writer.add_summary(
-                    tf.Summary(
-                        value=[tf.Summary.Value(
-                            tag='episode_reward',
-                            simple_value=sum(rewards))]),
-                    iteration)
+                tf.Summary(
+                    value=[
+                        tf.Summary.Value(
+                            tag="episode_reward", simple_value=sum(rewards)
+                        )
+                    ]
+                ),
+                iteration,
+            )
 
             # episode成功判定
             if sum(rewards) >= 195:
                 success_num += 1
                 # 連続で100回成功していればepisode loopを終了
                 if success_num >= 100:
-                    print('Iteration: ', iteration)
-                    print('Clear!!')
+                    print("Iteration: ", iteration)
+                    print("Clear!!")
                     break
             else:
                 success_num = 0
@@ -112,6 +121,6 @@ def main(args):
         writer.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = argparser()
     main(args)

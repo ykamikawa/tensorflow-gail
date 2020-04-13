@@ -1,21 +1,24 @@
-import os
 import argparse
+import os
+
 import gym
 import numpy as np
-import tensorflow as tf
 from tqdm import tqdm
+import tensorflow as tf
 
-from network_models.policy_net import Policy_net
 from algo.ppo import PPOTrain
+from network_models.policy_net import Policy_net
 
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logdir', help='log directory', default='log/train/ppo')
-    parser.add_argument('--savedir', help='save directory', default='trained_models/ppo')
-    parser.add_argument('--gamma', default=0.95, type=float)
-    parser.add_argument('--iteration', default=int(1e4), type=int)
-    parser.add_argument('--gpu_num', help='specify GPU number', default='0', type=str)
+    parser.add_argument("--logdir", help="log directory", default="log/train/ppo")
+    parser.add_argument(
+        "--savedir", help="save directory", default="trained_models/ppo"
+    )
+    parser.add_argument("--gamma", default=0.95, type=float)
+    parser.add_argument("--iteration", default=int(1e4), type=int)
+    parser.add_argument("--gpu_num", help="specify GPU number", default="0", type=str)
     return parser.parse_args()
 
 
@@ -26,12 +29,12 @@ def main(args):
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
     # gym環境作成
-    env = gym.make('CartPole-v0')
+    env = gym.make("CartPole-v0")
     env.seed(0)
     ob_space = env.observation_space
     # policy net
-    Policy = Policy_net('policy', env)
-    Old_Policy = Policy_net('old_policy', env)
+    Policy = Policy_net("policy", env)
+    Old_Policy = Policy_net("old_policy", env)
     # ppo学習インスタンス
     PPO = PPOTrain(Policy, Old_Policy, gamma=args.gamma)
 
@@ -39,10 +42,8 @@ def main(args):
     saver = tf.train.Saver()
     # session config
     config = tf.ConfigProto(
-            gpu_options=tf.GPUOptions(
-                visible_device_list=args.gpu_num,
-                allow_growth=True
-                ))
+        gpu_options=tf.GPUOptions(visible_device_list=args.gpu_num, allow_growth=True)
+    )
     # start session
     with tf.Session(config=config) as sess:
         # summary writer
@@ -99,37 +100,49 @@ def main(args):
 
             # summary追加
             writer.add_summary(
-                    tf.Summary(
-                        value=[tf.Summary.Value(
-                            tag='episode_length',
-                            simple_value=episode_length)]),
-                    iteration)
+                tf.Summary(
+                    value=[
+                        tf.Summary.Value(
+                            tag="episode_length", simple_value=episode_length
+                        )
+                    ]
+                ),
+                iteration,
+            )
             writer.add_summary(
-                    tf.Summary(
-                        value=[tf.Summary.Value(
-                            tag='episode_reward',
-                            simple_value=sum(rewards))]),
-                    iteration)
+                tf.Summary(
+                    value=[
+                        tf.Summary.Value(
+                            tag="episode_reward", simple_value=sum(rewards)
+                        )
+                    ]
+                ),
+                iteration,
+            )
 
             # episode成功判定
             if sum(rewards) >= 195:
                 success_num += 1
                 # 連続で100回成功していればepisode loopを終了
                 if success_num >= 100:
-                    saver.save(sess, args.savedir+'/model.ckpt')
-                    print('Clear!! Model saved.')
+                    saver.save(sess, args.savedir + "/model.ckpt")
+                    print("Clear!! Model saved.")
                     break
             else:
                 success_num = 0
 
             # policy netによるtrajectryをプレースホルダー用に変換
-            observations = np.reshape(observations, newshape=[-1] + list(ob_space.shape))
+            observations = np.reshape(
+                observations, newshape=[-1] + list(ob_space.shape)
+            )
             actions = np.array(actions).astype(dtype=np.int32)
             # rewardsをプレースホルダー用に変換
             rewards = np.array(rewards).astype(dtype=np.float32)
 
             # gaesの取得
-            gaes = PPO.get_gaes(rewards=rewards, v_preds=v_preds, v_preds_next=v_preds_next)
+            gaes = PPO.get_gaes(
+                rewards=rewards, v_preds=v_preds, v_preds_next=v_preds_next
+            )
             gaes = np.array(gaes).astype(dtype=np.float32)
             gaes = (gaes - gaes.mean()) / gaes.std()
             v_preds_next = np.array(v_preds_next).astype(dtype=np.float32)
@@ -143,30 +156,33 @@ def main(args):
             for epoch in range(6):
                 # 学習データサンプル用のインデックスを取得
                 sample_indices = np.random.randint(
-                        low=0,
-                        high=observations.shape[0],
-                        size=32)
+                    low=0, high=observations.shape[0], size=32
+                )
                 # PPO学習データをサンプル
-                sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]
+                sampled_inp = [
+                    np.take(a=a, indices=sample_indices, axis=0) for a in inp
+                ]
                 PPO.train(
-                        obs=sampled_inp[0],
-                        actions=sampled_inp[1],
-                        gaes=sampled_inp[2],
-                        rewards=sampled_inp[3],
-                        v_preds_next=sampled_inp[4])
+                    obs=sampled_inp[0],
+                    actions=sampled_inp[1],
+                    gaes=sampled_inp[2],
+                    rewards=sampled_inp[3],
+                    v_preds_next=sampled_inp[4],
+                )
 
             # summaryの取得
             summary = PPO.get_summary(
-                    obs=inp[0],
-                    actions=inp[1],
-                    gaes=inp[2],
-                    rewards=inp[3],
-                    v_preds_next=inp[4])
+                obs=inp[0],
+                actions=inp[1],
+                gaes=inp[2],
+                rewards=inp[3],
+                v_preds_next=inp[4],
+            )
 
             writer.add_summary(summary, iteration)
         writer.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = argparser()
     main(args)
